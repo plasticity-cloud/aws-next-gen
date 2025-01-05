@@ -7,7 +7,7 @@ RUN cd $HOME/projects && \
     git clone --depth 1 --branch 2.1.7 https://github.com/zlib-ng/zlib-ng.git && \
     cd zlib-ng && \
     git status && \
-    export CFLAGS='-g -O3 -march=native &&' \
+    export CFLAGS='-g -O3 -march=native' && \
     ./configure --zlib-compat && make && make install
 
 FROM public.ecr.aws/amazonlinux/amazonlinux:2023-minimal AS al2023-zlib-ng
