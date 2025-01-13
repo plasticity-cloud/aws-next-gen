@@ -10,3 +10,10 @@ RUN cd /root && dnf download --enablerepo fedora-source,updates-source --source 
 FROM public.ecr.aws/amazonlinux/amazonlinux:2023 AS builder
 
 COPY --from=source-dist /root/zlib-ng-2.1.7-2.fc40.src.rpm /root/zlib-ng-2.1.7-2.amzn2023.src.rpm
+
+RUN cd /root && \
+    dnf install -y git gcc g++ make automake cmake gtest gtest-devel libabigail amazon-rpm-config rpm-build multilib-rpm-config && \
+     mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS} && \
+     echo '%_topdir %(echo $HOME)/rpmbuild' > ~/.rpmmacros && \
+     rpm -i /root/zlib-ng-2.1.7-2.fc40.src.rpm && \
+     cd ~/rpmbuild/SPECS && rpmbuild -ba zlib-ng.spec
