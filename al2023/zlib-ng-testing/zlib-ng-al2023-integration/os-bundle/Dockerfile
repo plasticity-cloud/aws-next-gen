@@ -27,3 +27,5 @@ RUN mkdir /root/zlib-ng-rpms
 COPY --from=builder /root/rpmbuild/RPMS/aarch64/*.rpm /root/zlib-ng-rpms/
 
 RUN dnf install -y /root/zlib-ng-rpms/*.rpm
+
+RUN dnf clean
