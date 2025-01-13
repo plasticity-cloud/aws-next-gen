@@ -16,4 +16,14 @@ RUN cd /root && \
      mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS} && \
      echo '%_topdir %(echo $HOME)/rpmbuild' > ~/.rpmmacros && \
      rpm -i /root/zlib-ng-2.1.7-2.fc40.src.rpm && \
-     cd ~/rpmbuild/SPECS && rpmbuild -ba zlib-ng.spec
+     cd ~/rpmbuild/SPECS && rpmbuild -ba zlib-ng.spec && \
+     ls -al /root/rpmbuild/RPMS/aarch64
+
+
+FROM public.ecr.aws/amazonlinux/amazonlinux:2023 AS zlib-ng-dist
+
+RUN mkdir /root/zlib-ng-rpms
+
+COPY --from=builder /root/rpmbuild/RPMS/aarch64/*.rpm /root/zlib-ng-rpms/
+
+RUN dnf install -y /root/zlib-ng-rpms/*.rpm
