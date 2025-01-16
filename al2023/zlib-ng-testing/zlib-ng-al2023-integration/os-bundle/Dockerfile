@@ -10,7 +10,7 @@ RUN cd /root && dnf download --enablerepo fedora-source,updates-source --source 
 FROM public.ecr.aws/amazonlinux/amazonlinux:2023 AS zlib-ng-builder
 
 
-RUN dnf install -y git gcc g++ make automake cmake gtest gtest-devel libabigail amazon-rpm-config rpm-build multilib-rpm-config
+RUN dnf install -y git gcc g++ make automake cmake gtest gtest-devel libabigail amazon-rpm-config rpm-build multilib-rpm-config createrepo
 
 COPY --from=zlib-ng-source-dist /root/zlib-ng-2.1.7-2.fc40.src.rpm /root/zlib-ng-2.1.7-2.amzn2023.src.rpm
 
@@ -21,13 +21,16 @@ RUN cd /root && \
      cd ~/rpmbuild/SPECS && rpmbuild -ba zlib-ng.spec && \
      ls -al /root/rpmbuild/RPMS/aarch64
 
+RUN mkdir -p /opt/al2023/next-gen/repos/zlib-ng && \
+cp -R /root/rpmbuild/RPMS/aarch64 /opt/al2023/next-gen/repos/zlib-ng && \
+cd /opt/al2023/next-gen/repos/zlib-ng && createrepo --repo=zlib-ng-os . && \
+tar -czvf $HOME/al2023-zlib-ng.tar.gz /opt/al2023/next-gen/repos/zlib-ng/*
 
 FROM public.ecr.aws/amazonlinux/amazonlinux:2023 AS zlib-ng-dist
 
-RUN mkdir /root/zlib-ng-rpms
+RUN mkdir -p /opt/al2023/next-gen/repos/zlib-ng
 
-COPY --from=zlib-ng-builder /root/rpmbuild/RPMS/aarch64/*.rpm /root/zlib-ng-rpms/
+COPY --from=zlib-ng-builder /opt/al2023/next-gen/repos/zlib-ng/*.rpm /opt/al2023/next-gen/repos/zlib-ng
+COPY image_content/etc/yum.repos.d/amazonlinux-zlib-ng.repo /etc/yum.repos/
 
-RUN dnf install -y /root/zlib-ng-rpms/*.rpm
-
-RUN dnf clean all
+RUN dnf install -y zlib-ng-compat && dnf clean all

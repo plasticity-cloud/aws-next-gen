@@ -1,0 +1,8 @@
+[amazonlinux-zlib-ng]
+name=Amazon Linux 2023 zlib-ng
+baseurl=file:///opt/al2023/next-gen/repos/zlib-ng
+priority=10
+enabled=1
+repo_gpgcheck=0
+type=rpm
+gpgcheck=0
