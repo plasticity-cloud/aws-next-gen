@@ -22,15 +22,15 @@ RUN cd /root && \
      ls -al /root/rpmbuild/RPMS/aarch64
 
 RUN mkdir -p /opt/al2023/next-gen/repos/zlib-ng && \
-cp -R /root/rpmbuild/RPMS/aarch64 /opt/al2023/next-gen/repos/zlib-ng && \
+cp -R /root/rpmbuild/RPMS/aarch64/* /opt/al2023/next-gen/repos/zlib-ng/ && \
 cd /opt/al2023/next-gen/repos/zlib-ng && createrepo --repo=zlib-ng-os . && \
-tar -czvf $HOME/al2023-zlib-ng.tar.gz /opt/al2023/next-gen/repos/zlib-ng/*
+tar -cf $HOME/al2023-zlib-ng.tar.gz /opt/al2023/next-gen/repos/zlib-ng/*
 
 FROM public.ecr.aws/amazonlinux/amazonlinux:2023 AS zlib-ng-dist
 
 RUN mkdir -p /opt/al2023/next-gen/repos/zlib-ng
 
-COPY --from=zlib-ng-builder /opt/al2023/next-gen/repos/zlib-ng/*.rpm /opt/al2023/next-gen/repos/zlib-ng
-COPY image_content/etc/yum.repos.d/amazonlinux-zlib-ng.repo /etc/yum.repos/
+COPY --from=zlib-ng-builder /opt/al2023/next-gen/repos/zlib-ng/ /opt/al2023/next-gen/repos/zlib-ng/
+COPY image_content/etc/yum.repos.d/amazonlinux-zlib-ng.repo /etc/yum.repos.d/
 
 RUN dnf install -y zlib-ng-compat && dnf clean all
