@@ -1,0 +1,13 @@
+FROM public.ecr.aws/lambda/java:21
+
+RUN dnf install -y tar gzip && dnf clean all
+
+COPY --chown=root:root image_content/etc/yum.repos.d/*.repo /etc/yum.repos.d/
+
+COPY --chown=root:root image_content/al2023-zlib-ng.tar.gz /tmp
+
+RUN cd /tmp && tar -xf ./al2023-zlib-ng.tar.gz && \
+    mkdir -p /opt/al2023/next-gen/repos/zlib-ng && \
+    cp -R /tmp/opt/al2023/next-gen/repos/zlib-ng/* /opt/al2023/next-gen/repos/zlib-ng/
+
+RUN dnf repolist && dnf install -y zlib-ng-compat
