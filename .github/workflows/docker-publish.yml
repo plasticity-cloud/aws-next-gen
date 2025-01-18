@@ -19,7 +19,9 @@ env:
   # Use docker.io for Docker Hub if empty
   REGISTRY: ghcr.io
   # github.repository as <account>/<repo>
-  IMAGE_NAME: plasticity-cloud/al2023-zlib-ng
+  IMAGE_NAME: plasticity-cloud/amazonlinux
+  IMAGE_PATH: plasticity-cloud/amazonlinux
+  DEFAULT_TAG: 2023
 
 
 jobs:
@@ -71,13 +73,29 @@ jobs:
 
       # Build and push Docker image with Buildx (don't push on PR)
       # https://github.com/docker/build-push-action
+      - name: Build and push AL2023 RPM Builder Docker image
+        id: build-and-push-rpm-builder
+        uses: docker/build-push-action@0565240e2d4ab88bba5387d719585280857ece09 # v5.0.0
+        with:
+          context: al2023/zlib-ng-testing/zlib-ng-al2023-integration/os-bundle/rpm-builder
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: $REGISTRY/$IMAGE_PATH/rpm-builder:$DEFAULT_TAG
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Build and push Docker image with Buildx (don't push on PR)
+      # https://github.com/docker/build-push-action
       - name: Build and push Docker image
         id: build-and-push
         uses: docker/build-push-action@0565240e2d4ab88bba5387d719585280857ece09 # v5.0.0
         with:
-          context: al2023/zlib-ng-testing/zlib-ng-al2023-integration/os-bundle
+          context: al2023/zlib-ng-testing/zlib-ng-al2023-integration/os-bundle/zlib-ng
           push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
+          tags:
+           - ${{ steps.meta.outputs.tags }}
+           - $REGISTRY/$IMAGE_PATH/rpm-builder:$DEFAULT_TAG
+          target: al2023-zlib-ng-dist
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
