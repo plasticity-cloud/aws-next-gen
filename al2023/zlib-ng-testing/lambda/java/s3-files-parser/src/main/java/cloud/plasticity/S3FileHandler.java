@@ -10,10 +10,10 @@ import software.amazon.awssdk.services.s3.S3AsyncClient;
  *
  * @see <a href=https://docs.aws.amazon.com/lambda/latest/dg/java-handler.html>Lambda Java Handler</a> for more information
  */
-public class S3FileHandler implements RequestHandler<Object, Object> {
+public class S3FileHandler implements RequestHandler<S3FileSearchRecord,String> {
     private final S3AsyncClient s3Client;
 
-    public App() {
+    public S3FileHandler() {
         // Initialize the SDK client outside of the handler method so that it can be reused for subsequent invocations.
         // It is initialized when the class is loaded.
         s3Client = DependencyFactory.s3Client();
@@ -21,10 +21,13 @@ public class S3FileHandler implements RequestHandler<Object, Object> {
     }
 
     @Override
-    public Object handleRequest(final Object input, final Context context) {
-        // TODO: invoking the api call using s3Client.
+    public String handleRequest(S3FileSearchRecord record, final Context context) {
         
 	
-        return input;
+        S3FileParserHandler s3ParserHandler = new S3FileParserHandler();
+        return s3ParserHandler.parse(record.bucket(), record.path(), record.searchKeyword());
     }
+}
+
+record S3FileSearchRecord(String bucket, String path, String searchKeyword) {
 }

@@ -18,11 +18,13 @@ import org.slf4j.*;
 
 public class S3FileParserHandler {
 
-	public void parse(String s3bucket, String s3path, String searchString) {
+	public String parse(String s3bucket, String s3path, String searchString) {
 		var path = Paths.get(URI.create("s3://" + s3bucket + "/" + s3path));
 		
 		long startTime = System.currentTimeMillis();
 		
+                StringBuilder strBuilder = new StringBuilder();
+
 		try (ReadableByteChannel channel = FileChannel.open(path, StandardOpenOption.READ)) {
 
 			// Construct a stream that reads bytes from the given channel.
@@ -36,7 +38,6 @@ public class S3FileParserHandler {
 				int totalNumberOfLines=0;
 				String line;
 				
-				StringBuilder strBuilder = new StringBuilder();
 				
 				while ((line = bufferedReader.readLine()) != null) {
 					totalNumberOfLines++;
@@ -60,6 +61,8 @@ public class S3FileParserHandler {
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}
+
+		return strBuilder.toString();
 	}
 
 }

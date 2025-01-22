@@ -1,7 +1,5 @@
 FROM public.ecr.aws/lambda/java:21 AS zlib-base
 
-RUN dnf install -y tar gzip && dnf clean all
-
 ARG JAVA_PROJECT_ROOT=java/s3-files-parser
 
 # Copy function code and runtime dependencies from Maven layout
