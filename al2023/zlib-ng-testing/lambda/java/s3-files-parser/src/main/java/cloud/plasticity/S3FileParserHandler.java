@@ -13,8 +13,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.concurrent.TimeUnit;
 import java.util.zip.GZIPInputStream;
-import org.slf4j.*;
-
+import com.amazonaws.services.lambda.runtime.LambdaLogger;
 
 public class S3FileParserHandler {
 
@@ -56,6 +55,8 @@ public class S3FileParserHandler {
 			
 		long totalTime = System.currentTimeMillis() - startTime;
 		
+		
+
 		System.out.print("Total time " + String.valueOf(totalTime / 1000));
 		
 		} catch (Exception e) {
