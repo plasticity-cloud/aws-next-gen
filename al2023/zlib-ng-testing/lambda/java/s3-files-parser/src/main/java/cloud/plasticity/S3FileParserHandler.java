@@ -18,7 +18,7 @@ import com.amazonaws.services.lambda.runtime.LambdaLogger;
 public class S3FileParserHandler {
 
 	public String parse(String s3bucket, String s3path, String searchString) {
-		var path = Paths.get(URI.create("s3://" + s3bucket + "/" + s3path));
+		var path = Paths.get(URI.create("s3:///" + s3bucket + "/" + s3path));
 		
 		long startTime = System.currentTimeMillis();
 		

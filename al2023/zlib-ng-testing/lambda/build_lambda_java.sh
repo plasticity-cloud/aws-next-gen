@@ -12,7 +12,7 @@ BUILD_ROOT=$PWD
 
 cd $PROJECT_ROOT
 
-mvn clean package
+mvn clean package install
 mvn compile dependency:copy-dependencies -DincludeScope=runtime
 
 cd $BUILD_ROOT

@@ -3,6 +3,7 @@ package cloud.plasticity;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
+import software.amazon.nio.spi.s3.S3FileSystemProvider;
 
 /**
  * Lambda function entry point. You can change to use other pojo type or implement
@@ -12,6 +13,7 @@ import software.amazon.awssdk.services.s3.S3AsyncClient;
  */
 public class S3FileHandler implements RequestHandler<S3FileSearchRecord,String> {
     private final S3AsyncClient s3Client;
+    //private final S3FileSystemProvider s3FileSystemProvider;
 
     public S3FileHandler() {
         // Initialize the SDK client outside of the handler method so that it can be reused for subsequent invocations.
