@@ -5,10 +5,12 @@ ARG JAVA_PROJECT_ROOT=java/s3-files-parser
 # Copy function code and runtime dependencies from Maven layout
 COPY $JAVA_PROJECT_ROOT/target/classes ${LAMBDA_TASK_ROOT}
 COPY $JAVA_PROJECT_ROOT/target/dependency/* ${LAMBDA_TASK_ROOT}/lib/
+COPY $JAVA_PROJECT_ROOT/target/dependency/* ${LAMBDA_TASK_ROOT}
 
-RUN mkdir -p /opt/lib
+COPY $JAVA_PROJECT_ROOT/target/S3FileHandler.jar ${LAMBDA_TASK_ROOT}
+#RUN mkdir -p /opt/lib
 
-COPY $JAVA_PROJECT_ROOT/target/dependency/* /opt/lib/
+#COPY $JAVA_PROJECT_ROOT/target/dependency/* /opt/lib/
     
 # Set the CMD to your handler (could also be done as a parameter override outside of the Dockerfile)
 CMD [ "cloud.plasticity.S3FileHandler::handleRequest" ]

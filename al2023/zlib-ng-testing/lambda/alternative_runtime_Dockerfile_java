@@ -1,0 +1,27 @@
+FROM public.ecr.aws/amazoncorretto/amazoncorretto:21-al2023-headless AS zlib-base
+
+WORKDIR /function
+
+ARG JAVA_PROJECT_ROOT=java/s3-files-parser
+
+COPY $JAVA_PROJECT_ROOT/target/*.jar ./
+COPY $JAVA_PROJECT_ROOT/target/dependency/*.jar ./
+
+# Set runtime interface client as default command for the container runtime
+ENTRYPOINT [ "/usr/bin/java", "-cp", "./*", "com.amazonaws.services.lambda.runtime.api.client.AWSLambda" ]
+# Pass the name of the function handler as an argument to the runtime
+CMD [ "cloud.plasticity.S3FileHandler::handleRequest" ]
+
+FROM zlib-base AS zlib-ng
+
+RUN dnf install -y tar gzip
+
+COPY image_content/al2023-zlib-ng.tar.gz /tmp/
+COPY image_content/etc/yum.repos.d/ /etc/yum.repos.d/
+
+RUN cd /tmp && tar -xf ./al2023-zlib-ng.tar.gz && \
+    mkdir -p /opt/al2023/next-gen/repos/zlib-ng && \
+    cp -R /tmp/opt/al2023/next-gen/repos/zlib-ng/* /opt/al2023/next-gen/repos/zlib-ng/ && \
+    rm -rf /tmp/*.tar.gz
+
+RUN dnf repolist && dnf install -y zlib-ng-compat zlib-ng && dnf clean all

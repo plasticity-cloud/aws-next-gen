@@ -14,6 +14,9 @@
     <exec-maven-plugin.version>1.6.0</exec-maven-plugin.version>
     <aws.java.sdk.version>2.30.2</aws.java.sdk.version>
     <aws.lambda.java.version>1.2.3</aws.lambda.java.version>
+    <aws.java.s3.nio.version>2.2.0</aws.java.s3.nio.version>
+    <log4j.version>2.17.1</log4j.version>
+    <sl4j.log4j.version>2.24.3</sl4j.log4j.version>
     <junit5.version>5.10.1</junit5.version>
   </properties>
   <build>
@@ -23,6 +26,7 @@
         <artifactId>maven-compiler-plugin</artifactId>
         <version>${maven.compiler.plugin.version}</version>
       </plugin>
+      <!--
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-shade-plugin</artifactId>
@@ -34,7 +38,6 @@
             <filter>
               <artifact>*:*</artifact>
               <excludes>
-                <!-- Suppress module-info.class warning-->
                 <exclude>module-info.class</exclude>
               </excludes>
             </filter>
@@ -48,7 +51,38 @@
             </goals>
           </execution>
         </executions>
+       </plugin>
+       -->
+      <!-- standalone version -->
+      <plugin>
+        <artifactId>maven-dependency-plugin</artifactId>
+        <executions>
+          <execution>
+            <phase>install</phase>
+            <goals>
+              <goal>copy-dependencies</goal>
+            </goals>
+            <configuration>
+              <outputDirectory>${project.build.directory}/lib</outputDirectory>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
+      <!--
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <configuration>
+          <archive>
+            <manifest>
+              <addClasspath>true</addClasspath>
+              <classpathPrefix>lib/</classpathPrefix>
+              <mainClass>cloud.plasticity.S3FileHandlerStandalone</mainClass>
+            </manifest>
+          </archive>
+        </configuration>
+       </plugin>
+      -->	      
     </plugins>
   </build>
   <dependencyManagement>
@@ -66,7 +100,12 @@
     <dependency>
       <groupId>software.amazon.nio.s3</groupId>
       <artifactId>aws-java-nio-spi-for-s3</artifactId>
-      <version>2.2.0</version>
+      <version>${aws.java.s3.nio.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk.crt</groupId>
+      <artifactId>aws-crt</artifactId>
+      <version>0.33.9</version>
     </dependency>
     <!--
 		<dependency>
@@ -76,14 +115,11 @@
 		</dependency>
 		
     -->
-
-    <!--
     <dependency>
       <groupId>org.apache.logging.log4j</groupId>
       <artifactId>log4j-slf4j2-impl</artifactId>
-      <version>2.24.3</version>
-	    </dependency>
-    -->
+      <version>${sl4j.log4j.version}</version>
+    </dependency>
     <dependency>
       <groupId>software.amazon.awssdk</groupId>
       <artifactId>s3</artifactId>
@@ -107,29 +143,33 @@
       <artifactId>aws-lambda-java-core</artifactId>
       <version>${aws.lambda.java.version}</version>
     </dependency>
-
-
+    <dependency>
+      <groupId>com.amazonaws</groupId>
+      <artifactId>aws-lambda-java-runtime-interface-client</artifactId>
+      <version>2.6.0</version>
+    </dependency>
+    <!-- 
     <dependency>
     <groupId>com.amazonaws</groupId>
     <artifactId>aws-lambda-java-log4j2</artifactId>
-    <version>1.6.0</version>
-  </dependency>
-  <dependency>
-    <groupId>org.apache.logging.log4j</groupId>
-    <artifactId>log4j-core</artifactId>
-    <version>2.17.1</version>
-  </dependency>
-  <dependency>
-    <groupId>org.apache.logging.log4j</groupId>
-    <artifactId>log4j-api</artifactId>
-    <version>2.17.1</version>
-  </dependency>
-  <dependency>
-    <groupId>org.apache.logging.log4j</groupId>
-    <artifactId>log4j-layout-template-json</artifactId>
-    <version>2.17.1</version>
-  </dependency>
-
+    <version>1.6.0</version
+   </dependency>
+  -->
+    <dependency>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-core</artifactId>
+      <version>${log4j.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-api</artifactId>
+      <version>${log4j.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-layout-template-json</artifactId>
+      <version>${log4j.version}</version>
+    </dependency>
     <!-- Test Dependencies -->
     <dependency>
       <groupId>org.junit.jupiter</groupId>

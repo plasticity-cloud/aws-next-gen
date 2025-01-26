@@ -15,10 +15,23 @@ import java.util.concurrent.TimeUnit;
 import java.util.zip.GZIPInputStream;
 import com.amazonaws.services.lambda.runtime.LambdaLogger;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+
 public class S3FileParserHandler {
 
+        //private LambdaLogger logger = context.getLogger();
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
+
 	public String parse(String s3bucket, String s3path, String searchString) {
-		var path = Paths.get(URI.create("s3:///" + s3bucket + "/" + s3path));
+
+		//LambdaLogger logger = context.getLogger();
+		//
+		//
+		System.out.println ( "s3:///" + s3bucket + "/" + s3path );
+
+		var path = Paths.get(URI.create("s3://" + s3bucket + "/" + s3path));
 		
 		long startTime = System.currentTimeMillis();
 		
@@ -46,7 +59,11 @@ public class S3FileParserHandler {
 				    }
 				}
 				
-				System.out.println("Number of WARC-Date lines " + warcCounter);
+				logger.info("Number of WARC-Date lines {}", warcCounter);
+				logger.info(strBuilder.toString());
+				logger.info("Number of totalNumberOfLines {}, ", totalNumberOfLines);
+
+			        System.out.println("Number of WARC-Date lines " + warcCounter);
 				System.out.println(strBuilder.toString());
 				System.out.println("Number of totalNumberOfLines " +  totalNumberOfLines );
 				
@@ -55,9 +72,8 @@ public class S3FileParserHandler {
 			
 		long totalTime = System.currentTimeMillis() - startTime;
 		
-		
-
-		System.out.print("Total time " + String.valueOf(totalTime / 1000));
+		logger.info("Total time {} ",String.valueOf(totalTime / 1000));
+		System.out.println("Total time " + String.valueOf(totalTime / 1000));
 		
 		} catch (Exception e) {
 			throw new RuntimeException(e);

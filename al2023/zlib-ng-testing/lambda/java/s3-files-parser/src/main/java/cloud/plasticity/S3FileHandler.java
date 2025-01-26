@@ -13,19 +13,19 @@ import software.amazon.nio.spi.s3.S3FileSystemProvider;
  */
 public class S3FileHandler implements RequestHandler<S3FileSearchRecord,String> {
     private final S3AsyncClient s3Client;
-    //private final S3FileSystemProvider s3FileSystemProvider;
+    private final S3FileSystemProvider s3FileSystemProvider;
 
     public S3FileHandler() {
         // Initialize the SDK client outside of the handler method so that it can be reused for subsequent invocations.
         // It is initialized when the class is loaded.
         s3Client = DependencyFactory.s3Client();
         // Consider invoking a simple api here to pre-warm up the application, eg: dynamodb#listTables
+        s3FileSystemProvider = null; 	
     }
 
     @Override
     public String handleRequest(S3FileSearchRecord record, final Context context) {
-        
-	
+        	
         S3FileParserHandler s3ParserHandler = new S3FileParserHandler();
         return s3ParserHandler.parse(record.bucket(), record.path(), record.searchKeyword());
     }
