@@ -1,5 +1,6 @@
 
-AWS_REGION=us-east-1
+#us-east-1
+AWS_REGION=ap-southeast-1
 AWS_ACCOUNT=864899852480
 
 IMAGE_REGISTRY=${AWS_ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com

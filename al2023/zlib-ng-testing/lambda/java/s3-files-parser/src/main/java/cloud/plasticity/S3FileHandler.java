@@ -27,9 +27,9 @@ public class S3FileHandler implements RequestHandler<S3FileSearchRecord,String> 
     public String handleRequest(S3FileSearchRecord record, final Context context) {
         	
         S3FileParserHandler s3ParserHandler = new S3FileParserHandler();
-        return s3ParserHandler.parse(record.bucket(), record.path(), record.searchKeyword());
+        return s3ParserHandler.parse(record.srcBucket(), record.path(), record.searchKeyword(), record.destinationBucket());
     }
 }
 
-record S3FileSearchRecord(String bucket, String path, String searchKeyword) {
+record S3FileSearchRecord(String srcBucket, String path, String searchKeyword, String destinationBucket) {
 }
