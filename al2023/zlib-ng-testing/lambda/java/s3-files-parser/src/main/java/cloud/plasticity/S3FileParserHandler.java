@@ -38,9 +38,9 @@ public class S3FileParserHandler {
 	
 	
 	/**
-	 * Every 10000 lines flush the buffers
+	 * Every 50000 lines flush the buffers
 	 */
-	private final int OUTPUT_FLUSH_INTERVAL = 10000;
+	private final int OUTPUT_FLUSH_INTERVAL = 50000;
 
 	public String parse(String s3bucket, String s3path, String searchString, String s3ResultsBucket) {
 
@@ -52,12 +52,16 @@ public class S3FileParserHandler {
 		var srcPath = Paths.get(URI.create("s3://" + s3bucket + "/" + s3path));
 		
 		//destination path will use input file name as folder name
-		var dstPathUri = URI.create("s3://" + s3ResultsBucket + "/" + s3path);
+		URI dstPathUri = URI.create("s3://" + s3ResultsBucket + "/" + s3path);
 		
 		
 
 		long startTime = System.currentTimeMillis();
 
+		
+		String result = String.format("Results saved in " + dstPathUri.toString() );
+		
+		System.out.println("Expected " + result);
 
 		try (ReadableByteChannel channel = FileChannel.open(srcPath, StandardOpenOption.READ)) {
 			
@@ -66,6 +70,7 @@ public class S3FileParserHandler {
 			
 			// creates the directories (called a prefix in s3)
 	        var dstPath = Files.createDirectories(Path.of(dstPathUri));
+	        
 
 			// Construct a stream that reads bytes from the given channel.
 
@@ -132,7 +137,7 @@ public class S3FileParserHandler {
 			System.out.println("Total time processing " + String.valueOf(totalTime / 1000));
 
 			
-			return String.format("Results saved in " + dstPathUri.toURL().toString() );
+			return result;
 
 		} catch (Exception e) {
 			throw new RuntimeException(e);
@@ -170,8 +175,6 @@ public class S3FileParserHandler {
 	 * @throws IOException
 	 */
 	private void compressBufferedString(StringBuilder strBuilder, GZIPOutputStream gzipOutputStream) throws IOException {
-
-		int bufferSize = strBuilder.length();
 
 		ByteArrayInputStream bais = new ByteArrayInputStream(strBuilder.toString().getBytes());
 
