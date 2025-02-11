@@ -31,109 +31,131 @@ public class S3FileParserHandler {
 
 	// private LambdaLogger logger = context.getLogger();
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
-	
 
-	private final String NON_MATCHED_FILE_NAME="NON_MATCHED.gz";
-	private final String MATCHED_FILE_NAME="MATCHED.gz";
-	private final String EPHEMERAL_STORAGE_LOCATION_KEY="ephemeral-location";
-	
-	private final int OUTPUT_BUFFER_SIZE  = 16777216; //1024 *  1024 ^ 16;
-	
-	
+	private final String NON_MATCHED_FILE_NAME = "NON_MATCHED.gz";
+	private final String MATCHED_FILE_NAME = "MATCHED.gz";
+	private final String EPHEMERAL_STORAGE_LOCATION_KEY = "ephemeral-location";
+	private final String RATE_LIMITING_KEY = "RATE_LIMITING";
+	private final String OUTPUT_FLUSH_INTERVAL_KEY = "OUTPUT_FLUSH_INTERVAL";
+	private final String RATE_LIMITING_DEFAULT_VALUE = String.valueOf(true);
+
+	private final int OUTPUT_BUFFER_SIZE = 16777216; // 1024 * 1024 ^ 16;
+
 	/**
 	 * Every 50000 lines flush the buffers
 	 */
-	private final int OUTPUT_FLUSH_INTERVAL = 1024 * 1000;
-	
-	private final int GZIP_BUFFER_LEVEL=65536;
+	private final int OUTPUT_FLUSH_INTERVAL_MULTIPLIER = 1024;
 
-	public String parse(String s3bucket, String s3path, String searchString, String s3ResultsBucket) {
+	private final String OUTPUT_FLUSH_INTERVAL_DEFAULT = "300";
 
-		// LambdaLogger logger = context.getLogger();
-		//
-		//
-		System.out.println("s3:///" + s3bucket + "/" + s3path);
+	private final int GZIP_BUFFER_LEVEL = 65536;
 
-		var srcPath = Paths.get(URI.create("s3://" + s3bucket + "/" + s3path));
-		
+	/**
+	 * 
+	 * @param sourceS3bucket
+	 * @param sourceS3Prefix
+	 * @param searchString
+	 * @param destinationS3Bucket
+	 * @return
+	 */
+	public String parse(String sourceS3bucket, String sourceS3Prefix, String searchString, String destinationS3Bucket) {
+
+		System.out.println("s3:///" + sourceS3bucket + "/" + sourceS3Prefix);
+
+		var srcPath = Paths.get(URI.create("s3://" + sourceS3bucket + "/" + sourceS3Prefix));
 
 		long startTime = System.currentTimeMillis();
-		
-		//destination path will use input file name as folder name
-		URI dstPathUri = URI.create("s3://" + s3ResultsBucket + "/" + s3path + "/" + startTime);
-		
-		String result = String.format("Results will be saved to: " + dstPathUri.toString() );
-		
-		System.out.println("Expected " + result);
+
+		// destination path will use input file name as folder name
+		URI dstPathUri = URI.create("s3://" + destinationS3Bucket + "/" + sourceS3Prefix + "/" + startTime);
+
+		String result = String.format("Results will be saved to: " + dstPathUri.toString());
+
+		System.out.println(result);
+
+		// HOW MANY LINES ARE REQUIRED TO BE BUFFERED, EXPRESSED IN Multiplies of 1024,
+		// before they are flushed to disk
+		// for Lambda function with 3008 MB, we can set 300 for fastq data from SGX
+		// Singapore
+		int outputFlushInterval = OUTPUT_FLUSH_INTERVAL_MULTIPLIER
+				* Integer.parseInt(System.getProperty(OUTPUT_FLUSH_INTERVAL_KEY, OUTPUT_FLUSH_INTERVAL_DEFAULT));
+
+		boolean rateLimitProcessing = Boolean
+				.valueOf(System.getProperty(RATE_LIMITING_KEY, RATE_LIMITING_DEFAULT_VALUE));
 
 		try (ReadableByteChannel channel = FileChannel.open(srcPath, StandardOpenOption.READ)) {
-			
-			// create destination prefix in the destination bucket only when we can open source
-			
-			// creates the directories, directories are prefixes in s3
-	        Path destinationS3Path = Files.createDirectories(Path.of(dstPathUri));     
-	        
-	        var ephemeralStorageMainVolume = System.getProperty(EPHEMERAL_STORAGE_LOCATION_KEY, "/tmp");
 
-	        File ephemeralStoragePath = new File(ephemeralStorageMainVolume);
-	        
-	        final File notMatchedResultsFile = new File(ephemeralStorageMainVolume,NON_MATCHED_FILE_NAME);
-	        notMatchedResultsFile.deleteOnExit();
-	        
-	        final File matchedResultsFile = new File(ephemeralStorageMainVolume,MATCHED_FILE_NAME);
-	        matchedResultsFile.deleteOnExit();
+			// create destination prefix in the destination bucket only when we can open
+			// source
+
+			// creates the directories, directories are prefixes in s3
+			Path destinationS3Path = Files.createDirectories(Path.of(dstPathUri));
+
+			var ephemeralStorageMainVolume = System.getProperty(EPHEMERAL_STORAGE_LOCATION_KEY, "/tmp");
+
+			final File notMatchedResultsFile = new File(ephemeralStorageMainVolume, NON_MATCHED_FILE_NAME);
+			notMatchedResultsFile.deleteOnExit();
+
+			final File matchedResultsFile = new File(ephemeralStorageMainVolume, MATCHED_FILE_NAME);
+			matchedResultsFile.deleteOnExit();
 
 			// Construct a stream that reads bytes from the given channel.
-	        
 			try (InputStream is = Channels.newInputStream(channel);
 					GZIPInputStream gzipInputStream = new GZIPInputStream(is, GZIP_BUFFER_LEVEL);
 					InputStreamReader inputStreamReader = new InputStreamReader(gzipInputStream);
-					BufferedReader bufferedReader = new BufferedReader(inputStreamReader,OUTPUT_BUFFER_SIZE)) {
-				
+					BufferedReader bufferedReader = new BufferedReader(inputStreamReader, OUTPUT_BUFFER_SIZE)) {
+
 				FileOutputStream fsOutputStreamNonMatching = new FileOutputStream(notMatchedResultsFile);
-				GZIPOutputStream gzipOutputStreamNonMatching = new GZIPOutputStream(fsOutputStreamNonMatching, GZIP_BUFFER_LEVEL);
+				GZIPOutputStream gzipOutputStreamNonMatching = new GZIPOutputStream(fsOutputStreamNonMatching,
+						GZIP_BUFFER_LEVEL);
 
 				StringBuilder nonMatchingLines = new StringBuilder(OUTPUT_BUFFER_SIZE);
-				
+
 				FileOutputStream fsOutputStreamMatching = new FileOutputStream(matchedResultsFile);
-				GZIPOutputStream gzipOutputStreamMatching = new GZIPOutputStream(fsOutputStreamMatching, GZIP_BUFFER_LEVEL);
+				GZIPOutputStream gzipOutputStreamMatching = new GZIPOutputStream(fsOutputStreamMatching,
+						GZIP_BUFFER_LEVEL);
 				StringBuilder matchedLines = new StringBuilder(OUTPUT_BUFFER_SIZE);
-				
+
 				int foundMatching = 0;
 				int totalNumberOfLines = 0;
 				String line;
-				
+
 				while ((line = bufferedReader.readLine()) != null) {
 					totalNumberOfLines++;
-					
+
 					// major output is non matched
 					if (!line.startsWith(searchString)) {
 						nonMatchingLines.append(line).append("\n");
-					}
-					else {
+					} else {
 						foundMatching++;
 						matchedLines.append(line).append("\n");
 					}
-					
-					if(totalNumberOfLines % OUTPUT_FLUSH_INTERVAL == 0 ) {
-						
+
+					if (totalNumberOfLines % outputFlushInterval == 0) {
+
 						System.out.println("totalNumberOfLines currently processed: " + totalNumberOfLines);
-						compressBufferedString(nonMatchingLines,gzipOutputStreamNonMatching);
-						compressBufferedString(matchedLines,gzipOutputStreamMatching);
+						compressBufferedString(nonMatchingLines, gzipOutputStreamNonMatching);
+						compressBufferedString(matchedLines, gzipOutputStreamMatching);
 						nonMatchingLines.setLength(0);
 						matchedLines.setLength(0);
-						break;
+
+						// this break is for Lambda testing
+						// under full execution for PGO tuning executed on Fargate/EC2 this break is
+						// removed
+
+						if (rateLimitProcessing) {
+							break;
+						}
 					}
 				}
-				
-				
+
 				logger.info("Number of lines {} matching {}", foundMatching, searchString);
 				logger.info("Total number of all lines in the file is {}, ", totalNumberOfLines);
-				
-				compressBufferedString(nonMatchingLines,gzipOutputStreamNonMatching);
-				compressBufferedString(matchedLines,gzipOutputStreamMatching);
 
-				System.out.println("Number of lines " + foundMatching  + " matching " + searchString );
+				compressBufferedString(nonMatchingLines, gzipOutputStreamNonMatching);
+				compressBufferedString(matchedLines, gzipOutputStreamMatching);
+
+				System.out.println("Number of lines " + foundMatching + " matching " + searchString);
 				System.out.println("Number of totalNumberOfLines " + totalNumberOfLines);
 
 				gzipOutputStreamNonMatching.flush();
@@ -147,17 +169,17 @@ public class S3FileParserHandler {
 			logger.info("Total time processing {} ", String.valueOf(totalTime / 1000));
 			System.out.println("Total time processing " + String.valueOf(totalTime / 1000));
 
-			
-			//create place holders for the files
+			// create place holders for the files
 			Path destinationS3PathNonMatched = destinationS3Path.resolve(NON_MATCHED_FILE_NAME);
-	        Files.write(destinationS3PathNonMatched, NON_MATCHED_FILE_NAME.getBytes());
-			
+			Files.write(destinationS3PathNonMatched, NON_MATCHED_FILE_NAME.getBytes());
+
 			Path destinationS3PathMatched = destinationS3Path.resolve(MATCHED_FILE_NAME);
 			Files.write(destinationS3PathNonMatched, MATCHED_FILE_NAME.getBytes());
-			
-	        Files.copy(notMatchedResultsFile.toPath(), destinationS3PathNonMatched, StandardCopyOption.REPLACE_EXISTING);
-	        Files.copy(matchedResultsFile.toPath(), destinationS3PathMatched, StandardCopyOption.REPLACE_EXISTING);
-			
+
+			Files.copy(notMatchedResultsFile.toPath(), destinationS3PathNonMatched,
+					StandardCopyOption.REPLACE_EXISTING);
+			Files.copy(matchedResultsFile.toPath(), destinationS3PathMatched, StandardCopyOption.REPLACE_EXISTING);
+
 			return result;
 
 		} catch (Exception e) {
@@ -165,78 +187,22 @@ public class S3FileParserHandler {
 		}
 	}
 
-	
 	/**
 	 * 
 	 * @param strBuilder
 	 * @throws IOException
 	 */
-	private void compressBufferedString(StringBuilder strBuilder) throws IOException {
-
-		int bufferSize = strBuilder.length();
-
-		ByteArrayInputStream bais = new ByteArrayInputStream(strBuilder.toString().getBytes());
-		ByteArrayOutputStream baos = new ByteArrayOutputStream(bufferSize);
-		GZIPOutputStream gzipOutputStream = new GZIPOutputStream(baos);
-
-		byte[] bytes = new byte[1024 * 64];
-		int length;
-		while ((length = bais.read(bytes)) >= 0) {
-			gzipOutputStream.write(bytes, 0, length);
-		}
-
-		gzipOutputStream.close();
-		bais.close();
-		baos.close();
-	}
-	
-	/**
-	 * 
-	 * @param strBuilder
-	 * @throws IOException
-	 */
-	private void compressBufferedString(StringBuilder strBuilder, GZIPOutputStream gzipOutputStream) throws IOException {
-
-		
+	private void compressBufferedString(StringBuilder strBuilder, GZIPOutputStream gzipOutputStream)
+			throws IOException {
 		byte[] buffer = strBuilder.toString().getBytes();
-		
 		ByteArrayInputStream bais = new ByteArrayInputStream(buffer);
-		
-		
+
 		byte[] bytes = new byte[OUTPUT_BUFFER_SIZE];
 		int length;
 		while ((length = bais.read(bytes)) >= 0) {
 			System.out.println("Read " + length);
 			gzipOutputStream.write(bytes, 0, length);
 		}
-		
-//		gzipOutputStream.write(buffer, 0, buffer.length);
-		
 		strBuilder.setLength(0);
 	}
-	
-	
-//	/**
-//	 * Optimized method from ByteArrayInputStream
-//	 * @param buf
-//	 * @param out
-//	 * @return
-//	 * @throws IOException
-//	 */
-//    public synchronized long transferTo(byte[] buf, OutputStream out) throws IOException {
-//		int pos = 0;
-//		int count = buf.length;
-//        int len = count - pos;
-//        if (len > 0) {
-//            int nwritten = 0;
-//            while (nwritten < len) {
-//                int nbyte = Integer.min(len - nwritten, OUTPUT_BUFFER_SIZE);
-//                out.write(buf, pos, nbyte);
-//                pos += nbyte;
-//                nwritten += nbyte;
-//            }
-//            assert pos == count;
-//        }
-//        return len;
-//    }
 }

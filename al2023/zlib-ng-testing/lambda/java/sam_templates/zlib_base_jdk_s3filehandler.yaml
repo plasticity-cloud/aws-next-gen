@@ -1,0 +1,71 @@
+# This AWS SAM template has been generated from your function's configuration. If
+# your function has one or more triggers, note that the AWS resources associated
+# with these triggers aren't fully specified in this template and include
+# placeholder values. Open this template in AWS Infrastructure Composer or your
+# favorite IDE and modify it to specify a serverless application with other AWS
+# resources.
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: An AWS Serverless Application Model template describing your function.
+Resources:
+  zlibbasejdks3filehandler:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Description: ''
+      MemorySize: 3008
+      Timeout: 150
+      Architectures:
+        - arm64
+      EphemeralStorage:
+        Size: 2048
+      Environment:
+        Variables:
+          S3_SPI_READ_MAX_FRAGMENT_NUMBER: '5'
+          S3_SPI_READ_MAX_FRAGMENT_SIZE: '41680000'
+      EventInvokeConfig:
+        MaximumEventAgeInSeconds: 21600
+        MaximumRetryAttempts: 2
+      ImageUri: >-
+        864899852480.dkr.ecr.ap-southeast-1.amazonaws.com/plasticity/amazonlinux@sha256:87cf6130c30214db5ac224b47d924fec178dd7bb44f6bd68d117bea89061c45a
+      PackageType: Image
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - s3:*
+                - s3-object-lambda:*
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - xray:PutTraceSegments
+                - xray:PutTelemetryRecords
+              Resource:
+                - '*'
+            - Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+              Resource: arn:aws:logs:ap-southeast-1:864899852480:*
+            - Effect: Allow
+              Action:
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource:
+                - >-
+                  arn:aws:logs:ap-southeast-1:864899852480:log-group:/aws/lambda/zlib_base_jdk_s3filehandler:*
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+              Resource: arn:aws:s3:::*
+            - Effect: Allow
+              Action:
+                - dynamodb:DeleteItem
+                - dynamodb:GetItem
+                - dynamodb:PutItem
+                - dynamodb:Scan
+                - dynamodb:UpdateItem
+              Resource: arn:aws:dynamodb:ap-southeast-1:864899852480:table/*
+      RecursiveLoop: Terminate
+      SnapStart:
+        ApplyOn: None
+      Tracing: Active
