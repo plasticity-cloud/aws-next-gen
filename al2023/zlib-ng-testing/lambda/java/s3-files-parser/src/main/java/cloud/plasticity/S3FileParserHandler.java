@@ -17,6 +17,7 @@ import java.nio.channels.Channels;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
@@ -32,8 +33,9 @@ public class S3FileParserHandler {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 	
 	
-	private final String NON_MATCHED_FILE_NAME="NON_MATCHED.gz";
-	private final String MATCHED_FILE_NAME="MATCHED.gz";
+	private final String NON_MATCHED_FILE_NAME="NON_MATCHED";
+	private final String MATCHED_FILE_NAME="MATCHED";
+	private final String GZIP_FILE_EXTENSION=".gz";
 	private final String EPHEMERAL_STORAGE_LOCATION_KEY="ephemeral-location";
 	
 	private final int OUTPUT_BUFFER_SIZE  = 16777216; //1024 *  1024 ^ 16;
@@ -61,18 +63,26 @@ public class S3FileParserHandler {
 		//destination path will use input file name as folder name
 		URI dstPathUri = URI.create("s3://" + s3ResultsBucket + "/" + s3path + "/" + startTime);
 		
-		String result = String.format("Results saved in " + dstPathUri.toString() );
+		String result = String.format("Results will be saved to: " + dstPathUri.toString() );
 		
 		System.out.println("Expected " + result);
 
 		try (ReadableByteChannel channel = FileChannel.open(srcPath, StandardOpenOption.READ)) {
 			
-			//create destination prefix in the destination bucket only when we can open source
+			// create destination prefix in the destination bucket only when we can open source
 			
-			// creates the directories (called a prefix in s3)
-	        var dstPath = Files.createDirectories(Path.of(dstPathUri));     
+			// creates the directories, directories are prefixes in s3
+	        Path destinationS3Path = Files.createDirectories(Path.of(dstPathUri));     
 	        
-	        var ephemeralStorageMainVolume = System.getProperty(EPHEMERAL_STORAGE_LOCATION_KEY, "/tmp");	        
+	        var ephemeralStorageMainVolume = System.getProperty(EPHEMERAL_STORAGE_LOCATION_KEY, "/tmp");
+
+	        Path ephemeralStoragePath = new File(ephemeralStorageMainVolume).toPath();
+	        
+	        final Path notMatchedResultsFile = Files.createTempFile(ephemeralStoragePath, NON_MATCHED_FILE_NAME, GZIP_FILE_EXTENSION);
+	        notMatchedResultsFile.toFile().deleteOnExit();
+	        
+	        final Path matchedResultsFile = Files.createTempFile(ephemeralStoragePath,MATCHED_FILE_NAME, GZIP_FILE_EXTENSION);
+	        matchedResultsFile.toFile().delete();
 
 			// Construct a stream that reads bytes from the given channel.
 	        
@@ -80,15 +90,13 @@ public class S3FileParserHandler {
 					GZIPInputStream gzipInputStream = new GZIPInputStream(is, GZIP_BUFFER_LEVEL);
 					InputStreamReader inputStreamReader = new InputStreamReader(gzipInputStream);
 					BufferedReader bufferedReader = new BufferedReader(inputStreamReader,OUTPUT_BUFFER_SIZE)) {
-
 				
-				
-				FileOutputStream fsOutputStreamNonMatching = new FileOutputStream(new File(ephemeralStorageMainVolume,NON_MATCHED_FILE_NAME));
+				FileOutputStream fsOutputStreamNonMatching = new FileOutputStream(notMatchedResultsFile.toFile());
 				GZIPOutputStream gzipOutputStreamNonMatching = new GZIPOutputStream(fsOutputStreamNonMatching, GZIP_BUFFER_LEVEL);
 
 				StringBuilder nonMatchingLines = new StringBuilder(OUTPUT_BUFFER_SIZE);
 				
-				FileOutputStream fsOutputStreamMatching = new FileOutputStream(new File(ephemeralStorageMainVolume,MATCHED_FILE_NAME));
+				FileOutputStream fsOutputStreamMatching = new FileOutputStream(matchedResultsFile.toFile());
 				GZIPOutputStream gzipOutputStreamMatching = new GZIPOutputStream(fsOutputStreamMatching, GZIP_BUFFER_LEVEL);
 				StringBuilder matchedLines = new StringBuilder(OUTPUT_BUFFER_SIZE);
 				
@@ -140,6 +148,9 @@ public class S3FileParserHandler {
 			logger.info("Total time processing {} ", String.valueOf(totalTime / 1000));
 			System.out.println("Total time processing " + String.valueOf(totalTime / 1000));
 
+	        Files.copy(notMatchedResultsFile, destinationS3Path, StandardCopyOption.REPLACE_EXISTING);
+	        Files.copy(matchedResultsFile, destinationS3Path, StandardCopyOption.REPLACE_EXISTING);
+			
 			
 			return result;
 
