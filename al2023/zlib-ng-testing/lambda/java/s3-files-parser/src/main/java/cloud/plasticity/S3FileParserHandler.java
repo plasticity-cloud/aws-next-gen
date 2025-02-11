@@ -32,10 +32,9 @@ public class S3FileParserHandler {
 	// private LambdaLogger logger = context.getLogger();
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 	
-	
-	private final String NON_MATCHED_FILE_NAME="NON_MATCHED";
-	private final String MATCHED_FILE_NAME="MATCHED";
-	private final String GZIP_FILE_EXTENSION=".gz";
+
+	private final String NON_MATCHED_FILE_NAME="NON_MATCHED.gz";
+	private final String MATCHED_FILE_NAME="MATCHED.gz";
 	private final String EPHEMERAL_STORAGE_LOCATION_KEY="ephemeral-location";
 	
 	private final int OUTPUT_BUFFER_SIZE  = 16777216; //1024 *  1024 ^ 16;
@@ -76,13 +75,13 @@ public class S3FileParserHandler {
 	        
 	        var ephemeralStorageMainVolume = System.getProperty(EPHEMERAL_STORAGE_LOCATION_KEY, "/tmp");
 
-	        Path ephemeralStoragePath = new File(ephemeralStorageMainVolume).toPath();
+	        File ephemeralStoragePath = new File(ephemeralStorageMainVolume);
 	        
-	        final Path notMatchedResultsFile = Files.createTempFile(ephemeralStoragePath, NON_MATCHED_FILE_NAME, GZIP_FILE_EXTENSION);
-	        notMatchedResultsFile.toFile().deleteOnExit();
+	        final File notMatchedResultsFile = new File(ephemeralStorageMainVolume,NON_MATCHED_FILE_NAME);
+	        notMatchedResultsFile.deleteOnExit();
 	        
-	        final Path matchedResultsFile = Files.createTempFile(ephemeralStoragePath,MATCHED_FILE_NAME, GZIP_FILE_EXTENSION);
-	        matchedResultsFile.toFile().delete();
+	        final File matchedResultsFile = new File(ephemeralStorageMainVolume,MATCHED_FILE_NAME);
+	        matchedResultsFile.deleteOnExit();
 
 			// Construct a stream that reads bytes from the given channel.
 	        
@@ -91,12 +90,12 @@ public class S3FileParserHandler {
 					InputStreamReader inputStreamReader = new InputStreamReader(gzipInputStream);
 					BufferedReader bufferedReader = new BufferedReader(inputStreamReader,OUTPUT_BUFFER_SIZE)) {
 				
-				FileOutputStream fsOutputStreamNonMatching = new FileOutputStream(notMatchedResultsFile.toFile());
+				FileOutputStream fsOutputStreamNonMatching = new FileOutputStream(notMatchedResultsFile);
 				GZIPOutputStream gzipOutputStreamNonMatching = new GZIPOutputStream(fsOutputStreamNonMatching, GZIP_BUFFER_LEVEL);
 
 				StringBuilder nonMatchingLines = new StringBuilder(OUTPUT_BUFFER_SIZE);
 				
-				FileOutputStream fsOutputStreamMatching = new FileOutputStream(matchedResultsFile.toFile());
+				FileOutputStream fsOutputStreamMatching = new FileOutputStream(matchedResultsFile);
 				GZIPOutputStream gzipOutputStreamMatching = new GZIPOutputStream(fsOutputStreamMatching, GZIP_BUFFER_LEVEL);
 				StringBuilder matchedLines = new StringBuilder(OUTPUT_BUFFER_SIZE);
 				
@@ -148,9 +147,16 @@ public class S3FileParserHandler {
 			logger.info("Total time processing {} ", String.valueOf(totalTime / 1000));
 			System.out.println("Total time processing " + String.valueOf(totalTime / 1000));
 
-	        Files.copy(notMatchedResultsFile, destinationS3Path, StandardCopyOption.REPLACE_EXISTING);
-	        Files.copy(matchedResultsFile, destinationS3Path, StandardCopyOption.REPLACE_EXISTING);
 			
+			//create place holders for the files
+			Path destinationS3PathNonMatched = destinationS3Path.resolve(NON_MATCHED_FILE_NAME);
+	        Files.write(destinationS3PathNonMatched, NON_MATCHED_FILE_NAME.getBytes());
+			
+			Path destinationS3PathMatched = destinationS3Path.resolve(MATCHED_FILE_NAME);
+			Files.write(destinationS3PathNonMatched, MATCHED_FILE_NAME.getBytes());
+			
+	        Files.copy(notMatchedResultsFile.toPath(), destinationS3PathNonMatched, StandardCopyOption.REPLACE_EXISTING);
+	        Files.copy(matchedResultsFile.toPath(), destinationS3PathMatched, StandardCopyOption.REPLACE_EXISTING);
 			
 			return result;
 
